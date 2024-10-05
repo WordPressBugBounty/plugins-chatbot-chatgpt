@@ -3,7 +3,7 @@
  * Plugin Name: Kognetiks Chatbot
  * Plugin URI:  https://github.com/kognetiks/kognetiks-chatbot
  * Description: This simple plugin adds an AI powered chatbot to your WordPress website.
- * Version:     2.1.5
+ * Version:     2.1.6
  * Author:      Kognetiks.com
  * Author URI:  https://www.kognetiks.com
  * License:     GPLv3 or later
@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Plugin version
 global $chatbot_chatgpt_plugin_version;
-$chatbot_chatgpt_plugin_version = '2.1.5';
+$chatbot_chatgpt_plugin_version = '2.1.6';
 
 // Plugin directory path
 global $chatbot_chatgpt_plugin_dir_path;
@@ -99,6 +99,7 @@ require_once plugin_dir_path(__FILE__) . 'includes/chatbot-call-gpt-api.php'; //
 require_once plugin_dir_path(__FILE__) . 'includes/chatbot-call-gpt-assistant.php'; // GPT Assistants - Ver 1.6.9
 require_once plugin_dir_path(__FILE__) . 'includes/chatbot-call-gpt-omni.php'; // ChatGPT API - Ver 2.0.2.1
 require_once plugin_dir_path(__FILE__) . 'includes/chatbot-call-image-api.php'; // Image API - Ver 1.9.4
+require_once plugin_dir_path(__FILE__) . 'includes/chatbot-call-mc-api.php'; // Markov Chain API - Ver 2.1.6
 require_once plugin_dir_path(__FILE__) . 'includes/chatbot-call-tts-api.php'; // TTS API - Ver 1.9.4
 require_once plugin_dir_path(__FILE__) . 'includes/chatbot-call-stt-api.php'; // STT API - Ver 2.0.1
 require_once plugin_dir_path(__FILE__) . 'includes/chatbot-globals.php'; // Globals - Ver 1.6.5
@@ -113,7 +114,6 @@ require_once plugin_dir_path(__FILE__) . 'includes/appearance/chatbot-settings-a
 require_once plugin_dir_path(__FILE__) . 'includes/appearance/chatbot-settings-appearance-user-css.php';
 
 // Include necessary files - Knowledge Navigator
-require_once plugin_dir_path(__FILE__) . 'includes/knowledge-navigator/chatbot-kn-acquire.php'; // Knowledge Navigator Acquisition - Ver 1.6.3
 require_once plugin_dir_path(__FILE__) . 'includes/knowledge-navigator/chatbot-kn-acquire-controller.php'; // Knowledge Navigator Acquisition - Ver 1.9.6
 require_once plugin_dir_path(__FILE__) . 'includes/knowledge-navigator/chatbot-kn-acquire-words.php'; // Knowledge Navigator Acquisition - Ver 1.9.6
 require_once plugin_dir_path(__FILE__) . 'includes/knowledge-navigator/chatbot-kn-analysis.php'; // Knowledge Navigator Analysis- Ver 1.6.2
@@ -134,6 +134,7 @@ require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-dia
 require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-links.php';
 require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-localization.php';
 require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-localize.php';
+require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-markov-chain.php';
 require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-notices.php';
 require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-premium.php';
 require_once plugin_dir_path(__FILE__) . 'includes/settings/chatbot-settings-registration-api.php';
@@ -157,6 +158,9 @@ require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-file-helper
 require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-file-upload.php'; // Functions - Ver 1.7.6
 require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-filter-out-html-tags.php'; // Functions - Ver 1.9.6
 require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-link-and-image-handling.php'; // Globals - Ver 1.9.1
+require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-markov-chain-decode.php'; // Functions - Ver 2.1.6
+require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-markov-chain-encode.php'; // Functions - Ver 2.1.6
+require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-markov-chain-scheduler.php'; // Functions - Ver 2.1.6
 require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-models.php'; // Functions - Ver 1.9.4
 require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-names.php'; // Functions - Ver 1.9.4
 require_once plugin_dir_path(__FILE__) . 'includes/utilities/chatbot-options-helper.php'; // Functions - Ver 2.0.5
@@ -190,6 +194,10 @@ if (!esc_attr(get_option('chatbot_chatgpt_upgraded'))) {
 
 // Diagnotics on/off setting can be found on the Settings tab - Ver 1.5.0
 $chatbot_chatgpt_diagnostics = esc_attr(get_option('chatbot_chatgpt_diagnostics', 'Off'));
+
+// FIXME - Disable Markov Chain - Ver 2.1.6.1
+global $chatbot_chatgpt_markov_chain_setting;
+$chatbot_chatgpt_markov_chain_setting = 'No';
 
 // Model choice - Ver 1.9.4
 global $model;
@@ -327,10 +335,12 @@ function chatbot_chatgpt_enqueue_scripts() {
     // Set visitor and logged in user limits - Ver 2.0.1
     if (is_user_logged_in()) {
         // back_trace( 'NOTICE', 'User is logged in');
-        $kchat_settings['chatbot_chatgpt_message_limit_setting'] = esc_attr(get_option('chatbot_chatgpt_message_limit_setting', '999'));
+        $kchat_settings['chatbot_chatgpt_message_limit_setting'] = esc_attr(get_option('chatbot_chatgpt_user_message_limit_setting', '999'));
+        $kchat_settings['chatbot_chatgpt_message_limit_period_setting'] = esc_attr(get_option('chatbot_chatgpt_user_message_limit_period_setting', 'Lifetime'));
     } else {
         // back_trace( 'NOTICE', 'User is NOT logged in');
         $kchat_settings['chatbot_chatgpt_message_limit_setting'] = esc_attr(get_option('chatbot_chatgpt_visitor_message_limit_setting', '999'));
+        $kchat_settings['chatbot_chatgpt_message_limit_period_setting'] = esc_attr(get_option('chatbot_chatgpt_visitor_message_limit_period_setting', 'Lifetime'));
     }
 
     // Localize the data for the chatbot - Ver 2.1.1.1
@@ -353,7 +363,6 @@ function chatbot_chatgpt_enqueue_scripts() {
         'chatbot_chatgpt_avatar_greeting_setting' => esc_attr(get_option('chatbot_chatgpt_avatar_greeting_setting', 'Howdy!!! Great to see you today! How can I help you?')),
         'chatbot_chatgpt_force_page_reload' => esc_attr(get_option('chatbot_chatgpt_force_page_reload', 'No')),
         'chatbot_chatgpt_custom_error_message' => esc_attr(get_option('chatbot_chatgpt_custom_error_message', 'Your custom error message goes here.')),
-        'chatbot_chatgpt_message_limit_setting' => esc_attr(get_option('chatbot_chatgpt_message_limit_setting', '999')),
     ));
     
     $kchat_settings_json = wp_json_encode($kchat_settings);
@@ -512,11 +521,21 @@ function chatbot_chatgpt_send_message() {
     // Send only clean text via the API
     $message = sanitize_text_field($_POST['message']);
 
-    // Check for missing API key or Message
-    if (!$api_key || !$message) {
-        // DIAG - Diagnostics
-        // back_trace( 'ERROR', 'Invalid API Key or Message.');
-        wp_send_json_error('Error: Invalid API key or Message. Please check the plugin settings.');
+    // If Markov Chain is enabled, then process the message
+    if (esc_attr(get_option('chatbot_chatgpt_markov_chain_setting', 'No')) == 'Yes') {
+        // Check for missing Message
+        if (!$message) {
+            // DIAG - Diagnostics
+            // back_trace( 'ERROR', 'Invalid API Key or Message.');
+            wp_send_json_error('Error: Invalid API key or Message. Please check the plugin settings.');
+        }
+    } else {
+        // Check for missing API key or Message
+        if (!$api_key || !$message) {
+            // DIAG - Diagnostics
+            // back_trace( 'ERROR', 'Invalid API Key or Message.');
+            wp_send_json_error('Error: Invalid API key or Message. Please check the plugin settings.');
+        }
     }
 
     // Removed in Ver 1.8.6 - 2024 02 15
@@ -615,7 +634,7 @@ function chatbot_chatgpt_send_message() {
         $use_assistant_id = 'Yes';
 
         // DIAG - Diagnostics - Ver 2.0.5
-        // back_trace( 'NOTICE' , 'Using Altrnate Assistant - $assistant_id: ' .  $assistant_id);
+        // back_trace( 'NOTICE' , 'Using Alternate Assistant - $assistant_id: ' .  $assistant_id);
 
         // Check if the GPT Assistant ID is blank, null, or "Please provide the GPT Assistant ID."
         if (empty($assistant_id) || $assistant_id == "Please provide the GPT Assistant Id.") {
@@ -790,9 +809,9 @@ function chatbot_chatgpt_send_message() {
         // back_trace( 'NOTICE', '$model: ' . $model);
         // back_trace( 'NOTICE', '$kchat_settings[model]: ' . $kchat_settings['model']);
         // if (str_starts_with($model,'dall')) {
-        //     back_trace ( 'NOTICE', 'Using Image API');
+        //     // back_trace ( 'NOTICE', 'Using Image API');
         // } else {
-        //     back_trace ( 'NOTICE', 'Using ChatGPT API');
+        //     // back_trace ( 'NOTICE', 'Using ChatGPT API');
         // }
 
         $thread_id = get_chatbot_chatgpt_threads($user_id, $session_id, $page_id, $assistant_id);
@@ -830,6 +849,10 @@ function chatbot_chatgpt_send_message() {
             $kchat_settings['model'] = $model;
             // Send message to STT API - Speech-to-text - Ver 1.9.6
             $response = chatbot_chatgpt_call_stt_api($api_key, $message);
+        } elseif ($model !== null && str_starts_with($model,'markov')) {
+            $kchat_settings['model'] = $model;
+            // Send message to Markov API - Ver 1.9.7
+            $response = chatbot_chatgpt_call_markov_chain_api($message);    
         } else {
             // Reload the model - BELT & SUSPENDERS
             $kchat_settings['model'] = $model;
@@ -907,25 +930,64 @@ function chatbot_chatgpt_append_extra_message($response, $extra_message) {
 
 // Crawler aka Knowledge Navigator - Ver 1.6.1
 function chatbot_chatgpt_kn_status_activation() {
+
     add_option('chatbot_chatgpt_kn_status', 'Never Run');
     // clear any old scheduled runs
+
     if (wp_next_scheduled('crawl_scheduled_event_hook')) {
         wp_clear_scheduled_hook('crawl_scheduled_event_hook');
     }
+
     // clear the 'knowledge_navigator_scan_hook' hook on plugin activation - Ver 1.6.3
     if (wp_next_scheduled('knowledge_navigator_scan_hook')) {
         // BREAK/FIX - Do not unset the hook - Ver 1.8.5
         // wp_clear_scheduled_hook('knowledge_navigator_scan_hook'); // Clear scheduled runs
     }
+
 }
 register_activation_hook(__FILE__, 'chatbot_chatgpt_kn_status_activation');
 
 // Clean Up in Aisle 4
 function chatbot_chatgpt_kn_status_deactivation() {
+
     delete_option('chatbot_chatgpt_kn_status');
     wp_clear_scheduled_hook('knowledge_navigator_scan_hook'); 
+
 }
 register_deactivation_hook(__FILE__, 'chatbot_chatgpt_kn_status_deactivation');
+
+// Markov Chain builder - Activation Hook - Ver 2.1.6
+function chatbot_chatgpt_markov_chain_status_activation() {
+
+    // DIAG - Diagnostics - Ver 2.1.6
+    // back_trace( 'NOTICE', 'Markov Chain Status Activation');
+
+    // Add the option for build status with a default value of 'Never Run'
+    add_option('chatbot_chatgpt_markov_chain_build_status', 'Never Run');
+
+    // Clear any old scheduled runs, if present
+    if (wp_next_scheduled('chatbot_chatgpt_markov_chain_scan_hook')) {
+        // BREAK/FIX - Do not unset the hook - Ver 2.1.6
+        // wp_clear_scheduled_hook('chatbot_chatgpt_markov_chain_scan_hook'); // Clear scheduled runs
+    }
+
+}
+register_activation_hook(__FILE__, 'chatbot_chatgpt_markov_chain_status_activation');
+
+// Clean up scheduled events and options - Deactivation Hook
+function chatbot_chatgpt_markov_chain_status_deactivation() {
+
+    // DIAG - Diagnostics - Ver 2.1.6
+    // back_trace( 'NOTICE', 'Markov Chain Status Deactivation');
+
+    // Delete the build status option on deactivation
+    delete_option('chatbot_chatgpt_markov_chain_build_status');
+
+    // Clear any scheduled events related to the Markov Chain scan
+    wp_clear_scheduled_hook('chatbot_chatgpt_markov_chain_scan_hook');
+
+}
+register_deactivation_hook(__FILE__, 'chatbot_chatgpt_markov_chain_status_deactivation');
 
 // Function to add a new message and response, keeping only the last five - Ver 1.6.1
 function addEntry($transient_name, $newEntry) {

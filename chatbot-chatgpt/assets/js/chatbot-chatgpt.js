@@ -1,5 +1,7 @@
 jQuery(document).ready(function ($) {
 
+    // console.log('Chatbot: NOTICE: chatbot-chatgpt.js loaded.');
+
     if (typeof kchat_settings === 'undefined') {
         // console.error('Chatbot: NOTICE: kchat_settings is not defined.');
         return;
@@ -206,10 +208,13 @@ jQuery(document).ready(function ($) {
 
     // Avatar and Custom Message - Ver 1.5.0 - Upgraded - Ver 2.0.3 - 2024 05 28
     let selectedAvatar = kchat_settings.chatbot_chatgpt_avatar_icon_setting || '';
+    // console.log ('Chatbot: NOTICE: selectedAvatar: ' + selectedAvatar);
     let customAvatar = kchat_settings.chatbot_chatgpt_custom_avatar_icon_setting || '';
+    // console.log ('Chatbot: NOTICE: customAvatar: ' + customAvatar);
 
     customAvatar = DOMPurify.sanitize(customAvatar); // Sanitize the custom avatar URL
     // customAvatar = document.createTextNode(customAvatar); // Create a text node from the custom avatar URL
+    // console.log ('Chatbot: NOTICE: customAvatar: ' + customAvatar);
 
     // Overrides for mobile devices - Ver 1.8.1
     // if (isMobile()) {
@@ -609,6 +614,17 @@ jQuery(document).ready(function ($) {
         return `<div>${markdown.trim()}</div>`;
     }
 
+    // Helper functions
+    function getWeekNumber(d) {
+        let oneJan = new Date(d.getFullYear(), 0, 1);
+        return Math.ceil((((d - oneJan) / 86400000) + oneJan.getDay() + 1) / 7);
+    }
+
+    function resetMessageCount(today) {
+        localStorage.setItem('chatbot_chatgpt_message_count', 0); // Reset the counter
+        localStorage.setItem('chatbot_chatgpt_last_reset', today); // Update last reset date
+    }
+
     // Submit the message when the submit button is clicked
     submitButton.on('click', function () {
 
@@ -620,14 +636,56 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        // Reset message count daily
-        let lastReset = localStorage.getItem('chatbot_chatgpt_last_reset');
-        let today = new Date().toDateString();
+        // Get current date and time
+        let now = new Date();
+        let today = now.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        let lastReset = localStorage.getItem('chatbot_chatgpt_last_reset') || today;
 
-        if (lastReset !== today) {
-            localStorage.setItem('chatbot_chatgpt_message_count', 0); // Reset the counter
-            localStorage.setItem('chatbot_chatgpt_last_reset', today); // Update last reset date
+        // Options: Hourly, Daily, Weekly, Monthly, Quarterly, Yearly, Lifetime
+        let messageLimitPeriod = localStorage.getItem('chatbot_chatgpt_message_limit_period_setting') || 'Daily';
+
+        if (messageLimitPeriod === 'Hourly') {
+            let lastResetHour = localStorage.getItem('chatbot_chatgpt_last_reset_hour') || '';
+            let currentHour = now.getHours();
+            if (lastResetHour !== currentHour.toString()) {
+                resetMessageCount(currentHour);
+                localStorage.setItem('chatbot_chatgpt_last_reset_hour', currentHour.toString());
+            }
+        } else if (messageLimitPeriod === 'Daily') {
+            if (lastReset !== today) {
+                resetMessageCount(today);
+            }
+        } else if (messageLimitPeriod === 'Weekly') {
+            let lastResetWeek = new Date(lastReset).getFullYear() + '-W' + getWeekNumber(new Date(lastReset));
+            let currentWeek = now.getFullYear() + '-W' + getWeekNumber(now);
+            if (lastResetWeek !== currentWeek) {
+                resetMessageCount(today);
+            }
+        } else if (messageLimitPeriod === 'Monthly') {
+            let lastResetMonth = new Date(lastReset).getFullYear() + '-' + (new Date(lastReset).getMonth() + 1);
+            let currentMonth = now.getFullYear() + '-' + (now.getMonth() + 1);
+            if (lastResetMonth !== currentMonth) {
+                resetMessageCount(today);
+            }
+        } else if (messageLimitPeriod === 'Quarterly') {
+            let lastResetQuarter = Math.floor((new Date(lastReset).getMonth() + 3) / 3);
+            let currentQuarter = Math.floor((now.getMonth() + 3) / 3);
+            if (lastResetQuarter !== currentQuarter || new Date(lastReset).getFullYear() !== now.getFullYear()) {
+                resetMessageCount(today);
+            }
+        } else if (messageLimitPeriod === 'Yearly') {
+            let lastResetYear = new Date(lastReset).getFullYear();
+            let currentYear = now.getFullYear();
+            if (lastResetYear !== currentYear) {
+                resetMessageCount(today);
+            }
+        } else if (messageLimitPeriod === 'Lifetime') {
+            // Do nothing
         }
+
+        // console.log("Today:", today);
+        // console.log("Last Reset:", lastReset);
+        // console.log("Message Limit Period:", messageLimitPeriod);
 
         // Add +1 to the message count - Ver 1.9.6
         let messageCount = localStorage.getItem('chatbot_chatgpt_message_count') || 0;
@@ -968,7 +1026,7 @@ jQuery(document).ready(function ($) {
         // Add the initial icon (microphone on) to the button
         $('#chatbot-chatgpt-speech-recognition-btn').on('click', function (e) {
 
-            console.log('Running version 5.0.8 of the speech recognition feature.');
+            // console.log('Running version 5.0.8 of the speech recognition feature.');
 
             e.preventDefault();  // Prevent default action if necessary
 
@@ -988,21 +1046,21 @@ jQuery(document).ready(function ($) {
                 recognition.maxAlternatives = 1;
                 recognition.continuous = false;  // Disable continuous listening
 
-                console.log('Starting speech recognition...');
+                // console.log('Starting speech recognition...');
 
                 // Attach the result event handler
                 recognition.addEventListener('result', handleRecognitionResult);
 
                 // Ensure we update the recognition state when it starts
                 recognition.addEventListener('start', () => {
-                    console.log('Speech recognition started.');
+                    // console.log('Speech recognition started.');
                     isRecognizing = true;
                     isManuallyStopping = false;
                 });
 
                 // Handle recognition end event
                 recognition.addEventListener('end', () => {
-                    console.log('Speech recognition ended.');
+                    // console.log('Speech recognition ended.');
                     isRecognizing = false;
                     if (!isManuallyStopping) {
                         // Restart recognition if it wasn't manually stopped
@@ -1014,7 +1072,7 @@ jQuery(document).ready(function ($) {
 
                 // Handle recognition error event
                 recognition.addEventListener('error', (event) => {
-                    console.error('Speech Recognition Error:', event.error);
+                    // console.error('Speech Recognition Error:', event.error);
                     // alert("Speech recognition error: " + event.error);
                     isRecognizing = false;
                 });
@@ -1042,19 +1100,19 @@ jQuery(document).ready(function ($) {
         $('#chatbot-chatgpt-speech-recognition-btn').attr('title', 'Speech Recognition API not supported in this browser.');
 
         // alert('Speech Recognition API not supported in this browser.');
-        console.log('Speech Recognition API not supported in this browser.');
+        // console.log('Speech Recognition API not supported in this browser.');
 
     }
 
     // Separate function to handle recognition results
     function handleRecognitionResult(event) {
         const transcript = event.results[0][0].transcript;
-        console.log('Speech recognized:', transcript);
+        // console.log('Speech recognized:', transcript);
         $('#chatbot-chatgpt-message').val(transcript);
         sendToChatbot(transcript);  // Send the recognized speech to the chatbot
 
         // After sending transcript to chatbot, reset the recognition state and icon
-        console.log('Resetting recognition state and icon...');
+        // console.log('Resetting recognition state and icon...');
         resetRecognition();
 
         // Manually stop recognition and restart after a slight delay
@@ -1075,7 +1133,7 @@ jQuery(document).ready(function ($) {
     // Function to send recognized speech text to chatbot input - V2.1.5.1
     function sendToChatbot(message) {
 
-        console.log("Sending message to chatbot:", message);
+        // console.log("Sending message to chatbot:", message);
 
         // Update the input field with the recognized speech
         $('#chatbot-chatgpt-message').val(message);
@@ -1092,7 +1150,7 @@ jQuery(document).ready(function ($) {
 
         } else {
 
-            console.error("Message is empty, cannot submit.");
+            // console.error("Message is empty, cannot submit.");
 
         }
     }
