@@ -26,7 +26,7 @@ function chatbot_chatgpt_activate() {
     $unexpected_output = ob_get_clean();
     if (!empty($unexpected_output)) {
         // Log or handle unexpected output
-        error_log('Unexpected output during plugin activation: ' . $unexpected_output);
+        error_log('[Chatbot] [chatbot-upgrade.php] Unexpected output during plugin activation: ' . $unexpected_output);
     }
 
     // DIAG - Log the activation
@@ -316,7 +316,8 @@ function chatbot_chatgpt_upgrade() {
     // FIXME - DETERMINE WHAT OPTION NAMES NEED TO BE CHANGED (DELETE, THEN REPLACE)
 
     // Add/update the option - chatbot_chatgpt_plugin_version
-    $plugin_version = kchat_get_plugin_version();
+    global $chatbot_chatgpt_plugin_version;
+    $plugin_version = $chatbot_chatgpt_plugin_version;
     update_option('chatbot_chatgpt_plugin_version', $plugin_version);
     // DIAG - Log the plugin version
     // back_trace( 'NOTICE', 'chatbot_chatgpt_plugin_version option created');
@@ -330,6 +331,13 @@ function chatbot_chatgpt_upgrade() {
     create_conversation_logging_table();
     // DIAG - Log the table creation
     // back_trace( 'NOTICE', 'chatbot_chatgpt_conversation_log table created');
+
+    // Ensure sentiment_score column exists for existing installations
+    if (function_exists('chatbot_chatgpt_add_sentiment_score_column')) {
+        chatbot_chatgpt_add_sentiment_score_column();
+    }
+    // DIAG - Log the column addition
+    // back_trace( 'NOTICE', 'sentiment_score column ensured');
 
     // DIAG - Log the upgrade complete
     // back_trace( 'NOTICE', 'Plugin upgrade completed');

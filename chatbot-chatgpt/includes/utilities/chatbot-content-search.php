@@ -192,8 +192,13 @@ function chatbot_chatgpt_get_searchable_post_types() {
         }
     }
 
+    // FALLBACK: If no post types are selected, include basic types to prevent SQL error
+    if (empty($post_types)) {
+        $post_types = ['post', 'page']; // Default to posts and pages
+    }
+
     // DIAG - Diagnostic - Ver 2.2.9
-    // back_trace('NOTICE', 'Searchable post types: ' . implode(', ', $post_types));
+    // back_trace( 'NOTICE', 'Searchable post types: ' . implode(', ', $post_types));
 
     return $post_types;
     
@@ -228,7 +233,7 @@ function chatbot_chatgpt_prepare_search_terms($search_prompt) {
     $terms = array_values(array_unique($words));
     
     // DIAG - Diagnostic - Ver 2.2.9
-    // back_trace('NOTICE', 'Final search terms: ' . implode(', ', $terms));
+    // back_trace( 'NOTICE', 'Final search terms: ' . implode(', ', $terms));
     
     return $terms;
 }
@@ -352,8 +357,8 @@ function chatbot_chatgpt_get_object_of_search_prompt($search_prompt) {
     }
 
     // DIAG - Diagnostic
-    // back_trace('NOTICE', 'Original prompt: ' . $prompt);
-    // back_trace('NOTICE', 'Extracted object: ' . $object);
+    // back_trace( 'NOTICE', 'Original prompt: ' . $prompt);
+    // back_trace( 'NOTICE', 'Extracted object: ' . $object);
 
     return $object;
 }

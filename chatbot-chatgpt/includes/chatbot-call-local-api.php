@@ -262,6 +262,8 @@ function chatbot_chatgpt_call_local_model_api($message) {
 
     // Decode the response
     $response_body = json_decode(wp_remote_retrieve_body($response), true);
+    $response_code = wp_remote_retrieve_response_code($response);
+    $raw_response = wp_remote_retrieve_body($response);
 
     // // Check for content in response
     // if (!empty($response_body['choices'][0]['message']['content'])) {
@@ -380,6 +382,17 @@ function chatbot_local_start_model() {
     // Set the API URL
     $api_url = esc_attr(get_option('chatbot_local_base_url','http://127.0.0.1:1337/v1')) . '/models/start';
 
+    // Get API key for authorization - Ver 2.2.6
+    $api_key = esc_attr(get_option('chatbot_local_api_key', ''));
+    // Decrypt the API key - Ver 2.2.6
+    $api_key = chatbot_chatgpt_decrypt_api_key($api_key);
+
+    // Prepare headers with authorization
+    $headers = array(
+        'Authorization' => 'Bearer ' . $api_key,
+        'Content-Type'  => 'application/json',
+    );
+
     // Prepare the data
     $data = array(
         'model' => $model
@@ -387,9 +400,7 @@ function chatbot_local_start_model() {
 
     // Send the request
     $response = wp_remote_post($api_url, array(
-        'headers' => array(
-            'Content-Type' => 'application/json',
-        ),
+        'headers' => $headers,
         'body' => json_encode(array(
             'model' => $model
         )),
@@ -427,11 +438,20 @@ function chatbot_local_get_models() {
     // Set the API URL
     $api_url = esc_attr(get_option('chatbot_local_base_url','http://127.0.0.1:1337/v1')) . '/models';
 
+    // Get API key for authorization - Ver 2.2.6
+    $api_key = esc_attr(get_option('chatbot_local_api_key', ''));
+    // Decrypt the API key - Ver 2.2.6
+    $api_key = chatbot_chatgpt_decrypt_api_key($api_key);
+
+    // Prepare headers with authorization
+    $headers = array(
+        'Authorization' => 'Bearer ' . $api_key,
+        'Content-Type'  => 'application/json',
+    );
+
     // Send the request
     $response = wp_remote_get($api_url, array(
-        'headers' => array(
-            'Content-Type' => 'application/json',
-        ),
+        'headers' => $headers,
     ));
 
     // Check for errors
@@ -446,16 +466,32 @@ function chatbot_local_get_models() {
 
     // Get the response body
     $response_body = json_decode(wp_remote_retrieve_body($response), true);
+    $response_code = wp_remote_retrieve_response_code($response);
+    $raw_response = wp_remote_retrieve_body($response);
 
     // DiAG - Diagnostics
     // back_trace( 'NOTICE', '$response_body: ' . print_r($response_body, true));
 
     // For each model in the $response_body, add the model to return array
     $models = array();
-    foreach ($response_body['data'] as $model) {
-        if (isset($model['status']) && $model['status'] == 'downloaded') {
-            $models[] = $model['id'];
+    
+    // Check if $response_body is not null and has 'data' key before iterating
+    if ($response_body && isset($response_body['data']) && is_array($response_body['data'])) {
+        foreach ($response_body['data'] as $model) {
+            if (isset($model['status']) && $model['status'] == 'downloaded') {
+                $models[] = $model['id'];
+            }
         }
+    } else {
+        // Enhanced logging with more details
+        $debug_info = array(
+            'response_code' => $response_code,
+            'response_body' => $response_body,
+            'raw_response' => $raw_response,
+            'api_url' => $api_url
+        );
+        prod_trace('WARNING', 'Invalid response body or missing data key in API response. Debug info: ' . json_encode($debug_info));
+        $models = array('llama3.2-3b-instruct');
     }
 
     return $models;

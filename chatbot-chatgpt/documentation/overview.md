@@ -42,10 +42,12 @@ The **Kognetiks Chatbot** plugin relies on external AI services to provide chatb
 
 The **Kognetiks Chatbot** plugin now includes a novel feature: the Sentential Context Model.  This new **beta feature** allows the chatbot to generate intelligent responses by leveraging your website's content - no AI platform connection required.  It's perfect for localized use or content-focused applications, this feature makes the chatbot more versatile than ever.
 
-## What's new in Version 2.3.0
+## What's new in Version 2.3.1
 
-* **Mistral API**: Added Settings and API for Mistral's API for chat completions and agents.
-* **Bug Fixes**: Resolved minor issues and bugs identified after release of version 2.2.9.
+* **Mistral API Websearch**: Added support for realtime websearch using a Mistral Assistant.
+* **LocalServer**: JAN.AI requires an API key for local models which is set when server is started.
+* **Error Logging**: For developers improved error logging for troubleshooting and debugging.
+* **Bug Fixes**: Resolved minor issues and bugs identified after release of version 2.3.0.
 
 ## Past Updates
 
@@ -87,11 +89,13 @@ The **Kognetiks Chatbot** plugin now includes a novel feature: the Sentential Co
 
 - [Buttons](buttons/buttons.md)
 
-- [Dashboard](dashboard/dashboard.md)
-
 - [Knowledge Navigator](knowledge-navigator/knowledge-navigator.md)
 
-- [Analysis](analysis/analysis.md)
+- [Knowledge Navigator Analysis](knowledge-navigator/knowledge-navigator-analysis.md)
+
+- [Dashboard Widget](dashboard/dashboard.md)
+
+- [Analytics Package](analytics-package/analytics-package.md) ⚠️ **Note:** This is a premium feature.
 
 - [Reporting](reporting/reporting.md)
 
